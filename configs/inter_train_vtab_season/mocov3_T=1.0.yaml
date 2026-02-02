@@ -1,0 +1,11 @@
+model_cfg:
+  algo: mocov3
+  T: 1.0
+
+augmentation: 3aug
+batch_size: 128
+steps: 10000
+gpu_id: 0
+
+learning_rate_backbone: 4.0e-5
+learning_rate_head: 4.0e-5
