@@ -14,6 +14,7 @@ class ViT(nn.Module):
 
         # --------------------------------------------------------------------------
         self.patch_embed = PatchEmbed(img_size, patch_size, in_chans, embed_dim)
+        self.embed_dim = embed_dim
         num_patches = self.patch_embed.num_patches
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
@@ -47,6 +48,20 @@ class ViT(nn.Module):
 def vit_base():
     model = ViT(embed_dim=768, depth=12, num_heads=12)
     return model
+
+
+class ViTClassifier(nn.Module):
+    def __init__(self, encoder_params, head_params, num_classes):
+        super().__init__()
+        self.encoder = vit_base()
+        self.encoder.load_state_dict(encoder_params, strict=True)
+        self.head = nn.Linear(self.encoder.embed_dim, num_classes)
+        self.head.load_state_dict(head_params, strict=True)
+
+    def forward(self, x):
+        features = self.encoder(x)[:, 0, :]  # [B, 768]
+        logits = self.head(features)
+        return logits
 
 # --------------------------------------------------------------------------
 # --------------------------------------------------------------------------

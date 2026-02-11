@@ -1,0 +1,5 @@
+augmentation: "3aug"
+batch_size: 128
+epochs: 100
+
+learning_rate: 2.0e-5

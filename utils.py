@@ -112,3 +112,35 @@ def append_to_csv(file_path, input_list):
     with open(file_path, "a", newline="") as csvfile:
         csvwriter = csv.writer(csvfile)
         csvwriter.writerow(input_list)
+
+
+def test_model(model, data_loader, device):
+    model.eval()
+    correct = 0
+    total = 0
+
+    with torch.no_grad():
+        for batch in data_loader:
+            images, labels = batch
+            images = images.to(device)
+            labels = labels.to(device)
+
+            with torch.amp.autocast("cuda", dtype=torch.bfloat16):
+                logits = model(images)
+            predictions = logits.argmax(dim=1)
+            correct += (predictions == labels).sum().item()
+            total += labels.size(0)
+
+    acc = correct / total * 100.0
+    return acc
+
+
+def make_weighted_params(state_dicts, weights, gpu_id):
+    out = {}
+    for key in state_dicts[0].keys():
+        weighted_sum = 0
+        for i, sd in enumerate(state_dicts):
+            param = sd[key].to(gpu_id)
+            weighted_sum = weighted_sum + param * weights[i]
+        out[key] = weighted_sum
+    return out

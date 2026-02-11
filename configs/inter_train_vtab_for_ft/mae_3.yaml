@@ -1,0 +1,9 @@
+model_cfg:
+  algo: mae
+
+augmentation: 3aug
+batch_size: 128
+steps: 10000
+
+learning_rate_backbone: 3.0e-5
+learning_rate_head: 3.0e-5

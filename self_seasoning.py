@@ -41,17 +41,6 @@ def forward_with_soup(model, images, weighted_params):
     return functional_call(model, (weighted_params, buffers), (images,))
 
 
-def make_weighted_params(state_dicts, weights, gpu_id):
-    out = {}
-    for key in state_dicts[0].keys():
-        weighted_sum = 0
-        for i, sd in enumerate(state_dicts):
-            param = sd[key].to(gpu_id)
-            weighted_sum = weighted_sum + param * weights[i]
-        out[key] = weighted_sum
-    return out
-
-
 def load_checkpoints(model_paths, gpu_id):
     all_checkpoints = []
     for path in model_paths:
@@ -60,8 +49,8 @@ def load_checkpoints(model_paths, gpu_id):
             weights = {k: v.to(gpu_id) for k, v in weights.items()}
             all_checkpoints.append(weights)
             print(f"Loaded: {path}")
-        except:
-            print(f"FAILED: {path}")
+        except Exception as e:
+            print(f"FAILED: {path} with error: {e}")
     return all_checkpoints
 
 
@@ -150,7 +139,7 @@ def self_season(cfg):
             images = images.to(cfg.gpu_id)
 
             with torch.amp.autocast("cuda", dtype=torch.bfloat16):
-                wparams = make_weighted_params(all_checkpoints, coefficients(), cfg.gpu_id)
+                wparams = utils.make_weighted_params(all_checkpoints, coefficients(), cfg.gpu_id)
                 embeds = forward_with_soup(model, images, wparams)[:, 0, :]
 
             loss = knn_inbatch_neighbor_entropy(embeds, k=cfg.k, T=cfg.temp)
@@ -172,7 +161,7 @@ def self_season(cfg):
     ##### TEST #####
     ################
 
-    best_mixed_weights = make_weighted_params(all_checkpoints, best_coefficients, cfg.gpu_id)
+    best_mixed_weights = utils.make_weighted_params(all_checkpoints, best_coefficients, cfg.gpu_id)
     model.load_state_dict(best_mixed_weights)
     test_acc = test_soup(model, train_loader, test_loader, cfg.gpu_id)
     print(f"Test accuracy: {test_acc:.4f}")
@@ -187,17 +176,15 @@ def self_season(cfg):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--models_dir", type=str, required=True, help="Directory containing saved models")
-    parser.add_argument("--save_dir", type=str, required=True, help="Directory to save outputs")
+    parser.add_argument("--models_dir", type=str, required=True)
+    parser.add_argument("--save_dir", type=str, required=True)
+    parser.add_argument("--gpu_id", type=int, default=0)
     args = parser.parse_args()
 
-    ingredient_cfg_names = [
-        "mae",
-        "mmcr_global_local",
-        "mmcr_global_only",
-        "mocov3_T=0.1",
-        "mocov3_T=1.0"
-    ]
+    exp_name = "inter_train_vtab_for_seasoning"
+    ingredient_cfg_dir = f"configs/{exp_name}"
+    ingredient_cfg_names = os.listdir(ingredient_cfg_dir)
+
     dataset_names = [
         "cifar100",
         "eurosat"
@@ -207,14 +194,14 @@ if __name__ == "__main__":
         cfg.dataset_name = dataset_name
         cfg.models_dir = args.models_dir
         cfg.save_dir = args.save_dir
-        
-        # Build model paths from inter-training outputs
+        cfg.gpu_id = args.gpu_id
+
         cfg.model_paths = [f"{cfg.models_dir}/mae_encoder.pth"]  # stock
         for ingredient_cfg_name in ingredient_cfg_names:
-            model_cfg = utils.load_config(f"configs/inter_train_vtab_season/{ingredient_cfg_name}.yaml")
+            model_cfg = utils.load_config(os.path.join(ingredient_cfg_dir, ingredient_cfg_name))
             model_cfg_str = "_".join(f"{k}={v}" for k, v in model_cfg.model_cfg.items())
             path = (
-                f"{cfg.models_dir}/{dataset_name}_intertrainings/"
+                f"{cfg.models_dir}/{exp_name}/{dataset_name}_intertrainings/"
                 f"{model_cfg_str}"
                 f"_lrb={model_cfg.learning_rate_backbone}"
                 f"_lrh={model_cfg.learning_rate_head}"

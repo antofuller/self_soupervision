@@ -94,7 +94,7 @@ def inter_train(cfg):
     ##### SAVE MODEL #####
     ######################
 
-    dataset_models_dir = f"{cfg.models_dir}/{cfg.dataset_name}_intertrainings"
+    dataset_models_dir = f"{cfg.models_dir}/{cfg.exp_name}/{cfg.dataset_name}_intertrainings"
     os.makedirs(dataset_models_dir, exist_ok=True)
     model_cfg_str = "_".join(f"{k}={v}" for k, v in cfg.model_cfg.items())
 
@@ -115,23 +115,23 @@ def inter_train(cfg):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--models_dir", type=str, required=True, help="Directory to save models")
+    parser.add_argument("--models_dir", type=str, required=True)
+    parser.add_argument("--exp_name", type=str, required=True)
+    parser.add_argument("--gpu_id", type=int, default=0)
     args = parser.parse_args()
 
-    cfg_names = [
-        "mae",
-        "mmcr_global_local",
-        "mmcr_global_only",
-        "mocov3_T=0.1",
-        "mocov3_T=1.0"
-    ]
+    cfg_dir = f"configs/{args.exp_name}"
+    cfg_names = os.listdir(cfg_dir)
+
     dataset_names = [
         "cifar100",
         "eurosat"
     ]
     for dataset_name in dataset_names:
         for cfg_name in cfg_names:
-            cfg = utils.load_config(f"configs/inter_train_vtab_season/{cfg_name}.yaml")
+            cfg = utils.load_config(os.path.join(cfg_dir, cfg_name))
+            cfg.exp_name = args.exp_name
             cfg.dataset_name = dataset_name
             cfg.models_dir = args.models_dir
+            cfg.gpu_id = args.gpu_id
             inter_train(cfg)

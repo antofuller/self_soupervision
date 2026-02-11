@@ -2,6 +2,5 @@ epochs: 100
 lr: 0.1
 min_lr: 0.01
 batch_size: 256
-gpu_id: 0
 k: 16
 temp: 0.07

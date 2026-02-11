@@ -70,7 +70,6 @@ class ResizeSmall(object):
     def __init__(self, smaller_size):
         assert isinstance(smaller_size, (int))
         self.smaller_size = smaller_size
-        self.is_annotation = is_annotation
 
     def __call__(self, image):
         h, w = image.shape[1], image.shape[2]
